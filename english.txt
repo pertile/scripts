@@ -1,0 +1,60 @@
+be	was,were	ser,estar	1
+be called	was called, were called	ser llamado	2
+bring	brougth	traer	2
+buy	bougth	comprar	2
+can	could	poder	2
+catch	caught	atrapar	2
+choose	chose	elegir	2
+come	came	venir	2
+do	did	hacer	2
+draw	drew	dibujar	2
+drink	drank	beber,tomar	1
+drive	drove	conducir,manejar	2
+dry	dried	secar	2
+eat	ate	comer	1
+fall	fell	caer	2
+find	found	encontrar	2
+fly	flew	volar	2
+get	got	obtener	2
+get dressed	got dressed	vestirse	2
+get undressed	got undressed	desvestirse	2
+get up	got up	levantarse	2
+get off	got off	salir	2
+give	gave	dar	1
+go	went	ir	1
+go shopping	went shopping	ir de compras	2
+have	had	tener	1
+have to	had to	tener que	2
+hide	hid	esconder,ocultar	2
+hit	hit	pegar,golpear	2
+hold	held	mantener	2
+hurt	hurt	lastimar	2
+know	knew	saber,conocer	2
+learn	learned,learnt	aprender	2
+lose	lost	perder	2
+make	made	hacer	2
+mean	meant	significar	2
+must	had to	deber	2
+put	put	poner	2
+put on	put on	ponerse,encender	2
+read	read	leer	2
+ride	rode	montar,cabalgar	2
+run	ran	correr	2
+say	said	decir	2
+see	saw	ver	1
+sing	sang	cantar	2
+sit	sat	sentarse	2
+sleep	slept	dormir	2
+spell	spelled,spellet	deletrear	2
+stand	stood	parar	2
+swim	swam	nadar	2
+take	took	tomar	1
+take a photo	took a photo	tomar una foto,sacar una foto	2
+take off	took off	despegar,quitarse	2
+tell	told	contar	2
+think	thought	pensar,creer	2
+throw	threw	lanzar	2
+understand	understood	entender	2
+wake up	woke up	despertarse	2
+wear	wore	vestir	2
+write	wrote	escribir	2
