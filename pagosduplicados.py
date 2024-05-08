@@ -7,6 +7,7 @@ convenios = []
 conn = pymssql.connect(server="sp01",user="excel",password="excel",database="fiducred")
 cursor = conn.cursor()
 
+# obtengo todas las cuotas que están en estado procesado o procesado sin cobro
 query = """
     SELECT *
     from PagosDebitoDirectoDetalle
@@ -23,6 +24,7 @@ row = cursor.fetchall()
 df = pd.DataFrame(row)
 df["liqcuota"] = df[9].astype(str) + "-" + df[10].astype(str)
 print("Las siguientes son las cuotas duplicadas reales en los créditos")
+
 for filename in os.listdir(directory):
     if filename[-3:].upper() == "TXT":
         with open(directory + "\\" + filename, errors='replace') as f:
@@ -34,6 +36,9 @@ for filename in os.listdir(directory):
                 
                 if liq.isnumeric():
                     liqcuota = f"{liq}-{int(cuota)}"
+                    # si algún crédito-cuota está en el archivo pero no en el listado de "procesado" o
+                    # "procesado sin cobro", entonces estamos hablando de un duplicado real
+                    # y no de un procesado sin cobro que por error marca como "pago duplicado"
                     if any(df.liqcuota == liqcuota):
                         print(f"{filename} (línea {i}): {liqcuota}")
                 i += 1

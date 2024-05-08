@@ -1,0 +1,1 @@
+"C:\Program Files\QGIS 3.26.1\bin\ogr2ogr" -F GPKG "C:\Users\fpertile\OneDrive - FDN\Planos y mapas\Rutas Chaco.gpkg" "C:\Users\fpertile\Downloads\Chaco.geojson"

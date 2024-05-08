@@ -1,0 +1,156 @@
+import os
+from PIL import Image
+
+# it's not a good idea to work on svg files because it is vectorial and I am 
+# working with raster images. I should convert the svg to png and then work with
+# import cairosvg
+
+from pyproj import Transformer
+import subprocess
+import gpxpy
+from datetime import timedelta
+import math
+from moviepy.editor import VideoFileClip
+
+
+# Define file paths
+CAR_SIZE = 200
+FOLDER_PATH = r"c:\temp2"
+print("Ingrese el nombre de los archivos:")
+filename = input()
+
+image_path = os.path.join(FOLDER_PATH, filename + ".tiff")
+# geojson_path = os.path.join(FOLDER_PATH, "pelayo.geojson")
+gpx_path = os.path.join(FOLDER_PATH, filename + ".gpx")
+png_path = os.path.join(FOLDER_PATH, "coche.png")
+gif_path = os.path.join(FOLDER_PATH, filename + ".gif")
+mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
+tfw_path = os.path.join(FOLDER_PATH, filename + ".tfw")
+
+# Open the georeferenced image
+image = Image.open(image_path)
+
+# Load the coordinates from the geojson file
+with open(gpx_path) as f:
+    # geojson_data = json.load(f)
+    # coordinates = [x["geometry"]["coordinates"] for x in geojson_data["features"]]
+    gpx = gpxpy.parse(f)
+
+# Get the points from the GPX file
+points = []
+for track in gpx.tracks:
+    for segment in track.segments:
+        for point in segment.points:
+            points.append((point.latitude, point.longitude, point.time))
+
+# print(points)
+
+# print("Coordenadas:", coordinates)
+frames = []
+
+INTERVAL = 5
+coordinates = [points[0][:2]]
+previous_time = points[0][2]
+for pos, coord in enumerate(points):
+    # print("coord[2]", coord[2], "previous_time", previous_time, "cálculo", (coord[2] - previous_time).seconds)
+    if (coord[2] - previous_time).seconds >= INTERVAL:
+        coordinates.append(coord[:2])
+        previous_time = previous_time + timedelta(seconds=INTERVAL)
+
+print("Total de puntos:", len(coordinates))
+
+background = Image.new("RGBA", image.size)
+background.paste(image)
+
+# Now open the PNG image
+car_image = Image.open(png_path)
+car_image = car_image.resize((CAR_SIZE, CAR_SIZE))  # Resize the SVG image to 200x200 pixels
+
+if car_image.mode in ('RGBA', 'LA') or (car_image.mode == 'P' and 'transparency' in car_image.info):
+    # Use the alpha channel as the mask
+    mask = car_image.split()[3]
+else:
+    # No transparency - use a solid mask
+    mask = Image.new("L", car_image.size, 255)
+
+# Create a transformer
+transformer = Transformer.from_crs("EPSG:4326", "EPSG:5347", always_xy=True)
+
+# Read the TFW file
+with open(tfw_path, 'r') as f:
+    lines = f.readlines()
+
+# Get the rotation values
+rotation_x = float(lines[2])
+rotation_y = float(lines[3])
+
+# Calculate the angle in radians
+angle_radians = math.atan2(rotation_y, rotation_x)
+
+# Convert the angle to degrees
+# add 180 because result is -135 and it should be 45
+image_rotation = math.degrees(angle_radians) + 180
+print("image rotation", image_rotation)
+
+previous_angle = 0
+angle_degrees = 0
+for pos, coord in enumerate(coordinates):
+    # Create a new image with the same size as the georeferenced image
+
+    # Transform the coordinates
+    x, y = transformer.transform(coord[1], coord[0])
+    if pos < len(coordinates) - 1:
+        next_x, next_y = transformer.transform(coordinates[pos + 1][1], coordinates[pos + 1][0])
+        # Calculate the difference between the coordinates
+        dx = next_x - x
+        dy = next_y - y
+
+        # Calculate the angle in radians
+        angle_radians = math.atan2(dy, dx)
+
+        # Convert the angle to degrees
+        angle_degrees = math.degrees(angle_radians)
+    else:
+        angle_degrees = previous_angle
+
+    
+    # print("coord[0], coord[1]", coord[0], coord[1])
+    # print("Coordenadas en metros:", x, y)
+
+    command = ['gdaltransform', image_path, '-i']
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    output, _ = process.communicate(input=f'{x} {y}\n'.encode())
+    output = output.decode().strip()
+    col, row, _ = output.split()
+    col = round(float(col)) - CAR_SIZE * 0.67
+    row = round(float(row)) - CAR_SIZE * 0.67
+
+    # print("el siguiente valor debaría ser 3000,500")
+    # print("Coordenadas transformadas:", col, row)
+    
+    # TODO: por la rotación a 45° primero tengo que sumar 45° al ángulo de rotación
+    # de esta manera un ángulo de 315° (9 de Julio sentido ascendente) se convierte en 0°
+    # y un ángulo de 135° (25 de Mayo sentido ascendente) se convierta en 180°
+    # si el ángulo está entre 90 y 270 grados, el coche debería estar volteado verticalmente antes de hacer la rotación
+
+    frame = background.copy()
+    rotation_angle = angle_degrees + image_rotation
+    rotated_car = car_image
+    if rotation_angle > 90 and rotation_angle < 270:
+        rotated_car = rotated_car.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    rotated_car = rotated_car.rotate(rotation_angle, expand=True)
+    # print("angle_degrees", angle_degrees, "image_rotation", image_rotation, "calc", angle_degrees + image_rotation + 180)   
+    rotated_mask =rotated_car.convert('RGBA').split()[3]
+    frame.paste(rotated_car, (int(col), int(row)), rotated_mask)
+
+    frames.append(frame)
+    temp = car_image.copy()
+    previous_angle = angle_degrees
+
+frames[0].save(gif_path, save_all=True, append_images=frames[1:], loop=0, duration=INTERVAL * 1000 / 4)
+
+# Load the GIF file
+clip = VideoFileClip(gif_path)
+
+# Write the GIF file to an MP4 file
+clip.write_videofile(mp4_path, codec='libx264')

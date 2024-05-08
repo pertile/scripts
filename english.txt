@@ -1,6 +1,6 @@
 be	was,were	ser,estar	1
 be called	was called, were called	ser llamado	2
-bring	brougth	traer	2
+bring	brought	traer	2
 buy	bougth	comprar	2
 can	could	poder	2
 catch	caught	atrapar	2

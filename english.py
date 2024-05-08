@@ -13,7 +13,7 @@ with open('english.txt') as file:
 
 
 
-questions = 3
+questions = 10
 
 options = numpy.random.choice(list, questions, False)
 # print(option)
