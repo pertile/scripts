@@ -4,8 +4,8 @@ import pyperclip
 import re
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import WordCompleter
-import requests
-import webbrowser
+from prompt_toolkit.key_binding import KeyBindings
+import json
 
 def to_js_variable(text):
     # Reemplazar caracteres no permitidos por guiones bajos
@@ -37,20 +37,34 @@ def haversine(lon1, lat1, lon2, lat2):
     return distance
 
 # URL del archivo GeoJSON
-geojson_url = "https://georesistencia.com/Obras%20GeoResistencia.geojson"
+GEOJSON_FILE= r"C:\Users\fpertile\OneDrive - FDN\Planos y mapas\Obras Resistencia.json"
 
 # Descargar y cargar el archivo GeoJSON
-response = requests.get(geojson_url)
-geojson_data = response.json()
+with open(GEOJSON_FILE, "r", encoding="utf-8") as file:
+    geojson_data = json.load(file)
 
 # Extraer los valores del atributo "Obra"
 obras = [feature["properties"]["Obra"] for feature in geojson_data["features"]]
 
 # Crear un WordCompleter con las obras
-obras_completer = WordCompleter(obras, ignore_case=True, match_middle=True)
+obras_completer = WordCompleter(obras, ignore_case=True, match_middle=True, sentence=True)
+
+# Configurar los key bindings para el autocompletado
+bindings = KeyBindings()
+
+@bindings.add('tab')
+@bindings.add('enter')
+def _(event):
+    buffer = event.app.current_buffer
+    document = buffer.document
+    completions = list(buffer.completer.get_completions(document, event.app))
+    if completions:
+        buffer.delete_before_cursor(len(document.text_before_cursor))
+        buffer.insert_text(completions[0].text)
+        event.app.exit(result=completions[0].text)
 
 # Preguntar por consola el ingreso del contenido del atributo "Obra" con autocompletado
-obra_seleccionada = prompt("Ingrese el nombre de la obra: ", completer=obras_completer)
+obra_seleccionada = prompt("Ingrese el nombre de la obra: ", completer=obras_completer, key_bindings=bindings)
 
 name_js = to_js_variable(obra_seleccionada)
 
@@ -78,17 +92,14 @@ else:
     print("No se encontraron coordenadas para la obra seleccionada.")
     exit
 
-osm_url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=true&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA#14.7/{center[1]}/{center[0]}/45"
+osm_url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=true&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA#15/{center[1]}/{center[0]}/45"
 
-webbrowser.open(osm_url)
 
-print("Ingrese la URL del mapa de OpenStreetMap: ")
+coord = osm_url.split("/")
 
-coord = input().split("/")
-
-lat = coord[-3]
-long = coord[-2]
-zoom = math.trunc(float(coord[-4].split("#")[1]))
+lat = center[1]
+long = center[0]
+zoom = "15"
 
 obra = f"'{obra_seleccionada}'"
 
@@ -107,7 +118,7 @@ for feature in geojson_data["features"]:
                 min_distance = distance
     
     # Solo almacenar la distancia mínima para cada obra
-    if obra_name not in distances or distance < distances[obra_name]:
+    if obra_name not in distances or distance < distances[obra_name] and obra_name != obra_seleccionada:
         distances[obra_name] = distance
 
 # Convertir el diccionario a una lista de tuplas y ordenar por distancia
@@ -122,13 +133,14 @@ for i, (obra_name, distance) in enumerate(closest_obras):
 # Permitir al usuario seleccionar una o más obras por índice
 print("Ingrese los números de otras obras relacionadas, separados por comas:")
 selected_indices = input()
-selected_indices = [int(index.strip()) - 1 for index in selected_indices.split(",")]
+otras = ""
+if selected_indices != "":
+    selected_indices = [int(index.strip()) - 1 for index in selected_indices.split(",")]
 
-# Guardar las obras seleccionadas en una variable
-otras = [closest_obras[index][0] for index in selected_indices]
+    # Guardar las obras seleccionadas en una variable
+    otras = [f"'{closest_obras[index][0]}'" for index in selected_indices]
 
-otras = input()
-otras = ",".join([f"'{x.strip()}'" for x in otras.split("|")])
+    otras = ",".join(otras)
 
 all = obra
 
