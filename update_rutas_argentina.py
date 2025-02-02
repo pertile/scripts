@@ -6,8 +6,8 @@ import subprocess
 overpass_url = "http://overpass-api.de/api/interpreter"
 overpass_query = """
 [out:json];
-relation["network"~"^AR"]->.searchRelations;  // Selecciona relaciones que coinciden
-way(r.searchRelations)(-55,-73.5,-21,-53.5);                         // Obtén solo las vías relacionadas
+relation["network"~"^AR"]->.searchRelations;
+way(r.searchRelations)(-55,-73.5,-21,-53.5);
 out geom; 
 """
 
@@ -40,7 +40,11 @@ for element in data['elements']:
         # Filter tags to include only ref, surface, and motorroad
         tags = element.get('tags', {})
         properties = {key: tags.get(key) for key in ['ref', 'surface', 'motorroad', 'highway']}
-        if properties:
+        highway = tags.get('highway')
+        is_proposal = False
+        if highway and highway == 'proposal':
+            is_proposal = True
+        if properties and not is_proposal:
             features.append({
                 "type": "Feature",
                 "geometry": geometry,

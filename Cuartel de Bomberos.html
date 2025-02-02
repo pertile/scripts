@@ -1,0 +1,134 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Cuartel de Bomberos</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.2.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v1.2.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        #Cuartel_Bomberos { position: relative; height: 400px; width: 100%; }
+        .Cuartel_Bomberos-overlay {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.5);
+            font-family: Arial, sans-serif;
+            overflow: auto;
+            border-radius: 3px;
+        }
+        #features {
+            position: absolute;
+            height: 170px;
+            right: 20px;
+            top: 200px;
+            width: 200px;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="Cuartel_Bomberos"></div>
+    <div id="features" class="Cuartel_Bomberos-overlay"></div>
+    <script>
+        mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+        var Cuartel_Bomberos = new mapboxgl.Map({
+            container: 'Cuartel_Bomberos',
+            style: '/Resistencia.json',
+            center: [-58.9839, -27.4514], // Coordenadas de Resistencia, Chaco
+            zoom: 12,
+            bearing: 45
+        });
+
+        var obras_terminadas = ['Cuartel Bomberos', 'Ampliación UPCP', 'Pasajes 9 de Julio y Lapacho', 'Villa San Martín', 'San Miguel - Etapa III', 'Alrededores Escuela 804', 'Goitía, Bosch y perpendiculares - Etapa II', 'UPCP - Etapa II', 'Río Paraná 0-200', 'Villa del Oeste y Don Enrique II', 'Río Guaycurú y Mar del Plata', 'Beligoy'];
+        var en_ejecucion = ['Falcón 3200-4150', 'Édison 4000-4800', '9 de Julio 4900-6500', 'Villa Ercilia - Etapa III', 'Güiraldes Sur', 'Río Negro y perpendiculares - Etapa II', 'Bolivia 400-750'];
+
+        Cuartel_Bomberos.on('load', function () {
+            // Add layer for obras terminadas
+            Cuartel_Bomberos.addLayer({
+                id: 'obras_terminadas',
+                type: 'line',
+                source: {
+                    type: 'geojson',
+                    data: '/Obras GeoResistencia.geojson'
+                },
+                "layout": {
+                    "line-join": "round",
+                    "line-cap": "round"
+                },
+                'paint': {
+                    'line-color': ['match', ['get', 'Obra'], obras_terminadas, '#ff0000', '#ffffff'],
+                    "line-width": 8
+                },
+                "filter": ['match', ['get', 'Obra'], obras_terminadas, true, false]
+            });
+
+            // Add layer for obras en ejecucion
+            Cuartel_Bomberos.addLayer({
+                id: 'en_ejecucion',
+                type: 'line',
+                source: {
+                    type: 'geojson',
+                    data: '/Obras GeoResistencia.geojson'
+                },
+                "layout": {
+                    "line-join": "round",
+                    "line-cap": "round"
+                },
+                'paint': {
+                    'line-color': ['match', ['get', 'Obra'], en_ejecucion, '#009900', '#ffffff'],
+                    "line-width": 8
+                },
+                "filter": ['match', ['get', 'Obra'], en_ejecucion, true, false]
+            });
+
+            // Create checkboxes for obras terminadas
+            var featuresDiv = document.getElementById('features');
+            var terminadasDiv = document.createElement('div');
+            terminadasDiv.innerHTML = '<strong>Obras Terminadas</strong><br>';
+            obras_terminadas.forEach(function (obra) {
+                var label = document.createElement('label');
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'terminadas_' + obra;
+                checkbox.checked = true;
+                checkbox.addEventListener('change', function (e) {
+                    updateFilter();
+                });
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(obra));
+                terminadasDiv.appendChild(label);
+                terminadasDiv.appendChild(document.createElement('br'));
+            });
+            featuresDiv.appendChild(terminadasDiv);
+
+            // Create checkboxes for obras en ejecucion
+            var ejecucionDiv = document.createElement('div');
+            ejecucionDiv.innerHTML = '<strong>Obras en Ejecución</strong><br>';
+            en_ejecucion.forEach(function (obra) {
+                var label = document.createElement('label');
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'ejecucion_' + obra;
+                checkbox.checked = true;
+                checkbox.addEventListener('change', function (e) {
+                    updateFilter();
+                });
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(obra));
+                ejecucionDiv.appendChild(label);
+                ejecucionDiv.appendChild(document.createElement('br'));
+            });
+            featuresDiv.appendChild(ejecucionDiv);
+
+            // Function to update the filter based on selected checkboxes
+            function updateFilter() {
+                var selectedObrasTerminadas = obras_terminadas.filter(function (obra) {
+                    return document.getElementById('terminadas_' + obra).checked;
+                });
+                var selectedEnEjecucion = en_ejecucion.filter(function (obra) {
+                    return document.getElementById('ejecucion_' + obra).checked;
+                });
+                Cuartel_Bomberos.setFilter('obras_terminadas', ['match', ['get', 'Obra'], selectedObrasTerminadas, true, false]);
+                Cuartel_Bomberos.setFilter('en_ejecucion', ['match', ['get', 'Obra'], selectedEnEjecucion, true, false]);
+            }
+        });
+    </script>
+</body>
+</html>
