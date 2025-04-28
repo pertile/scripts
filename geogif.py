@@ -8,32 +8,69 @@ from PIL import Image
 from pyproj import Transformer
 import subprocess
 import gpxpy
-from datetime import timedelta
+from datetime import datetime, timedelta
 import math
 from moviepy.editor import VideoFileClip
+import glob
+import json
 
+
+def get_video_metadata(video_path):
+    result = subprocess.run(
+        ['ffprobe', '-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', video_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    return json.loads(result.stdout)
+
+def get_video_timestamps(video_path):
+    metadata = get_video_metadata(video_path)
+    
+    creation_time_str = metadata['format']['tags'].get('creation_time')
+    duration = float(metadata['format']['duration'])
+
+    # creation time of video is when you finish recording, so is end timestamp
+    if creation_time_str:
+        end_timestamp = datetime.fromisoformat(creation_time_str.replace('Z', '+00:00'))
+
+    start_timestamp = end_timestamp - timedelta(seconds=duration)
+    return start_timestamp, end_timestamp
 
 # Define file paths
 CAR_SIZE = 200
 FOLDER_PATH = r"c:\temp2"
-print("Ingrese el nombre de los archivos:")
-filename = input()
 
-image_path = os.path.join(FOLDER_PATH, filename + ".tiff")
-# geojson_path = os.path.join(FOLDER_PATH, "pelayo.geojson")
-gpx_path = os.path.join(FOLDER_PATH, filename + ".gpx")
+
+print("Este programa toma el último archivo tiff que se haya creado en la carpeta temp2, el último archivo gpx no importa su nombre, y luego busca un video con el mismo nombre que el archivo tiff.")
+
+image_path = glob.glob(os.path.join(FOLDER_PATH, "*.tiff"))
+image_files = glob.glob(os.path.join(FOLDER_PATH, "*.tiff"))
+if not image_files:
+    raise FileNotFoundError("No se encontraron archivos TIFF en la carpeta especificada.")
+image_path = max(image_files, key=os.path.getmtime)
+
+filename = image_path.split("\\")[-1].split(".")[0]
+
+gpx_files = glob.glob(os.path.join(FOLDER_PATH, "*.gpx"))
+if not gpx_files:
+    raise FileNotFoundError("No se encontraron archivos GPX en la carpeta especificada.")
+gpx_path = max(gpx_files, key=os.path.getmtime)
+print("El archivo GPX es:", gpx_path)
+
+
+mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
 png_path = os.path.join(FOLDER_PATH, "coche.png")
 gif_path = os.path.join(FOLDER_PATH, filename + ".gif")
-mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
 tfw_path = os.path.join(FOLDER_PATH, filename + ".tfw")
+
+start_timestamp, end_timestamp = get_video_timestamps(mp4_path)
 
 # Open the georeferenced image
 image = Image.open(image_path)
 
 # Load the coordinates from the geojson file
 with open(gpx_path) as f:
-    # geojson_data = json.load(f)
-    # coordinates = [x["geometry"]["coordinates"] for x in geojson_data["features"]]
     gpx = gpxpy.parse(f)
 
 # Get the points from the GPX file
@@ -41,11 +78,9 @@ points = []
 for track in gpx.tracks:
     for segment in track.segments:
         for point in segment.points:
-            points.append((point.latitude, point.longitude, point.time))
+            if start_timestamp - timedelta(seconds=1) <= point.time <= end_timestamp + timedelta(seconds=1):
+                points.append((point.latitude, point.longitude, point.time))
 
-# print(points)
-
-# print("Coordenadas:", coordinates)
 frames = []
 
 INTERVAL = 5
@@ -153,4 +188,9 @@ frames[0].save(gif_path, save_all=True, append_images=frames[1:], loop=0, durati
 clip = VideoFileClip(gif_path)
 
 # Write the GIF file to an MP4 file
-clip.write_videofile(mp4_path, codec='libx264')
+clip.write_videofile(f"{FOLDER_PATH }\\{filename} esquema.mp4", codec='libx264')
+
+new_mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
+os.rename(mp4_path, new_mp4_path)
+new_gpx_path = os.path.join(FOLDER_PATH, filename + ".gpx")
+os.rename(gpx_path, new_gpx_path)
