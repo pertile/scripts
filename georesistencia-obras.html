@@ -1,0 +1,180 @@
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.11.1/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.11.1/mapbox-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+body {
+  margin: 0;
+  padding: 0;
+}
+
+h2,
+h3 {
+  margin: 10px;
+  font-size: 1.2em;
+}
+
+h3 {
+  font-size: 1em;
+}
+
+p {
+  font-size: 0.85em;
+  margin: 10px;
+  text-align: left;
+}
+
+/**
+* Create a position for the map
+* on the page */
+#mapGranResistencia { position: relative; height:800px; width:100%; }
+
+/**
+* Set rules for how the map overlays
+* (information box and legend) will be displayed
+* on the page. */
+.mapGranResistencia-overlay {
+  position: absolute;
+  margin-right: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  font-family: Arial, sans-serif;
+  overflow: auto;
+  border-radius: 3px;
+}
+
+#features {
+  position: absolute;  
+  height: 350px;
+  right: 20px;
+top: 200px;
+  width: 200px;
+z-index: 5;
+}
+
+#legend {
+  padding: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  line-height: 18px;
+  height: 150px;
+  margin-top: 40px;
+  width: 100px;
+}
+
+.legend-key {
+  display: inline-block;
+  border-radius: 20%;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+}
+
+</style></p>
+<div id="mapGranResistencia"><script>
+
+mapboxgl.accessToken = 'pk.eyJ1IjoicGVydGlsZSIsImEiOiJjaWhqa2Fya2gwbmhtdGNsemtuaW14YmNlIn0.67aoJXemP7021X6XxsF71g';
+var mapGranResistencia = new mapboxgl.Map({
+    container: 'mapGranResistencia',
+    center: [-58.99331,-27.45057],
+    zoom: 13,
+    bearing: 45,
+    style: '/Resistencia.json'
+});
+ mapGranResistencia.on('load', function () {
+    mapGranResistencia.addLayer({
+        id: 'obras',
+        type: 'line',
+        source: {
+            type: 'geojson',
+            data: '/Obras GeoResistencia.geojson'
+        },
+        "layout": {
+            "line-join": "round",
+            "line-cap": "round"
+        },
+        'paint': {
+            'line-color': '#ff0000',
+            'line-width': 4
+        },
+        "filter": ["==", ["get", "surface"], "construction"]
+    });
+  });
+   
+var layers = ['Obra nueva', 'Obra en ejecución', 'Calles pavimentadas', 'Calles de tierra', 'Avenidas pavimentadas', 'Avenidas de tierra'];
+var colors = ['#ff0000', '#009900', '#907e7d', '#FFFFFF', '#f3c4aa', '#f3f0b7'];
+
+// Add checkbox controls
+fetch('Obras GeoResistencia.geojson')
+    .then(response => response.json())
+    .then(data => {
+        const constructionFeatures = data.features.filter(f => f.properties.surface === 'construction');
+        const groupedByObra = constructionFeatures.reduce((acc, feature) => {
+          const obra = feature.properties.Obra;
+          if (!acc[obra]) {
+            acc[obra] = {
+              features: [],
+              bounds: new mapboxgl.LngLatBounds()
+            };
+          }
+          acc[obra].features.push({
+            coordinates: feature.geometry.coordinates,
+            properties: feature.properties
+          });
+          
+          // Extend bounds for LineString
+          if (feature.geometry.type === 'LineString') {
+            feature.geometry.coordinates.forEach(coord => {
+              acc[obra].bounds.extend(coord);
+            });
+          }
+          // Extend bounds for MultiLineString
+          else if (feature.geometry.type === 'MultiLineString') {
+            feature.geometry.coordinates.forEach(line => {
+              line.forEach(coord => {
+          acc[obra].bounds.extend(coord);
+              });
+            });
+          }
+          
+          return acc;
+        }, {});
+        Object.entries(groupedByObra).forEach(([obraName, obraData]) => {
+          const center = obraData.bounds.getCenter();
+          const el = document.createElement('div');
+          el.className = 'construction-marker';
+            el.innerHTML = '<i class="fas fa-person-digging" style="font-size: 24px;"></i>';
+          const marker = new mapboxgl.Marker({
+              element: el,
+              anchor: 'center',
+              draggable: false,
+          })
+            .setLngLat(center)
+            .addTo(mapGranResistencia);
+
+          // Create popup but don't add it yet
+          const popup = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: false
+          }).setHTML(`<h3>${obraName}</h3>`);
+
+          // Show popup on mouse enter
+          marker.getElement().addEventListener('mouseenter', () => {
+            popup.setLngLat(center).addTo(mapGranResistencia);
+          });
+
+          // Hide popup on mouse leave
+          marker.getElement().addEventListener('mouseleave', () => {
+            popup.remove();
+          });
+
+          // Add click handler for zoom
+          marker.getElement().addEventListener('click', () => {
+            mapGranResistencia.fitBounds(obraData.bounds, {
+              padding: 50,
+              duration: 1000,
+              bearing: 45
+            });
+          });
+        });
+    })
+    ;
+    
+</script>
