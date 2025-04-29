@@ -1,4 +1,4 @@
-<script src="https://api.mapbox.com/mapbox-gl-js/v1.2.0/mapbox-gl.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.11.1/mapbox-gl.js"></script>
 <link href="/mapbox-gl.css" rel="stylesheet">
 <style>
 /**
