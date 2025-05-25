@@ -26,7 +26,7 @@ def get_video_metadata(video_path):
 
 def get_video_timestamps(video_path):
     metadata = get_video_metadata(video_path)
-    
+    print(video_path)
     creation_time_str = metadata['format']['tags'].get('creation_time')
     duration = float(metadata['format']['duration'])
 
@@ -93,6 +93,7 @@ for pos, coord in enumerate(points):
         previous_time = previous_time + timedelta(seconds=INTERVAL)
 
 print("Total de puntos:", len(coordinates))
+print(coordinates)
 
 background = Image.new("RGBA", image.size)
 background.paste(image)
@@ -161,7 +162,7 @@ for pos, coord in enumerate(coordinates):
     row = round(float(row)) - CAR_SIZE * 0.67
 
     # print("el siguiente valor debaría ser 3000,500")
-    # print("Coordenadas transformadas:", col, row)
+    print("Coordenadas transformadas:", col, row)
     
     # TODO: por la rotación a 45° primero tengo que sumar 45° al ángulo de rotación
     # de esta manera un ángulo de 315° (9 de Julio sentido ascendente) se convierte en 0°

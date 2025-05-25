@@ -65,6 +65,6 @@ with open(geojson_path, 'w') as f:
 
 # Convert the GeoJSON file to GPKG using ogr2ogr
 gpkg_path = r'C:\Users\fpertile\OneDrive - FDN\Planos y mapas\rutas_argentina.gpkg'
-ogr2ogr_path = r'C:\Program Files\QGIS 3.36.0\bin\ogr2ogr'
+ogr2ogr_path = r'C:\Program Files\QGISQT6 3.40.3\bin\ogr2ogr'
 
-subprocess.run([ogr2ogr_path, '-f', 'GeoJSON', '-F', 'GPKG', gpkg_path, geojson_path])
+subprocess.run([ogr2ogr_path, '-f', 'GeoJSON', gpkg_path, geojson_path])

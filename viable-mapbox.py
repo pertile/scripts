@@ -7,6 +7,35 @@ from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.key_binding import KeyBindings
 import json
 
+class Project:
+    def __init__(self, id, name, color=None, lat=None, long=None):
+        self.id = id
+        self.name = name
+        self.color = color
+        self.lat = lat
+        self.long = long
+
+    def __repr__(self):
+        return f"Project(id={self.id}, name={self.name}, color={self.color}, lat={self.lat}, long={self.long})"
+
+def extract_coordinates(features):
+    coordinates = []
+    print(features)
+    for feature in features:
+        if feature["geometry"]["type"] == "Point":
+            coordinates.append(feature["geometry"]["coordinates"])
+        elif feature["geometry"]["type"] in ["LineString", "Polygon"]:
+            coordinates.extend(feature["geometry"]["coordinates"])
+        elif feature["geometry"]["type"] == "MultiPolygon":
+            for polygon in feature["geometry"]["coordinates"]:
+                coordinates.extend(polygon)
+
+    # Calcular el centro de las coordenadas
+    if coordinates:
+        avg_x = sum(coord[0] for coord in coordinates) / len(coordinates)
+        avg_y = sum(coord[1] for coord in coordinates) / len(coordinates)
+    return avg_y, avg_x
+
 def to_js_variable(text):
     # Reemplazar caracteres no permitidos por guiones bajos
     text = re.sub(r'\W|^(?=\d)', '_', text)
@@ -37,21 +66,23 @@ def haversine(lon1, lat1, lon2, lat2):
     return distance
 
 # URL del archivo GeoJSON
-GEOJSON_FILE= r"C:\Users\fpertile\OneDrive - FDN\Planos y mapas\Obras GeoResistencia.geojson"
+GEOJSON_FILE= r"C:\Users\fpertile\OneDrive - FDN\Planos y mapas\viable.geojson"
 
 # Descargar y cargar el archivo GeoJSON
 with open(GEOJSON_FILE, "r", encoding="utf-8") as file:
     geojson_data = json.load(file)
 
 # Extraer los valores del atributo "Obra"
-obras = [feature["properties"]["Obra"] for feature in geojson_data["features"]]
+obras = [feature["properties"]["Clave"] for feature in geojson_data["features"] if feature["properties"]["Clave"] is not None]
+# print(obras)
 
 # Crear un WordCompleter con las obras
-obras_completer = WordCompleter(obras, ignore_case=True, match_middle=True, sentence=True)
+obras_completer = WordCompleter(obras)
 
 # Configurar los key bindings para el autocompletado
 bindings = KeyBindings()
 
+COLORS = ['#ff0000', '#008000', '#B695C0']
 @bindings.add('tab')
 @bindings.add('enter')
 def _(event):
@@ -64,56 +95,36 @@ def _(event):
         event.app.exit(result=completions[0].text)
 
 # Preguntar por consola el ingreso del contenido del atributo "Obra" con autocompletado
-obra_seleccionada = prompt("Ingrese el nombre de la obra: ", completer=obras_completer, key_bindings=bindings)
+obra_seleccionada = prompt("Ingrese la clave de la obra: ", completer=obras_completer)
 
 name_js = to_js_variable(obra_seleccionada)
 
 # Filtrar las features que tienen el valor de "Obra" seleccionado
-selected_features = [feature for feature in geojson_data["features"] if feature["properties"]["Obra"] == obra_seleccionada]
+selected_features = [feature for feature in geojson_data["features"] if feature["properties"]["Clave"] == obra_seleccionada]
+
 
 # Extraer las coordenadas de las features seleccionadas
-coordinates = []
-for feature in selected_features:
-    if feature["geometry"]["type"] == "Point":
-        coordinates.append(feature["geometry"]["coordinates"])
-    elif feature["geometry"]["type"] in ["LineString", "Polygon"]:
-        coordinates.extend(feature["geometry"]["coordinates"])
-    elif feature["geometry"]["type"] == "MultiPolygon":
-        for polygon in feature["geometry"]["coordinates"]:
-            coordinates.extend(polygon)
+lat, long = extract_coordinates(selected_features)
 
-center = []
-# Calcular el centro de las coordenadas
-if coordinates:
-    avg_x = sum(coord[0] for coord in coordinates) / len(coordinates)
-    avg_y = sum(coord[1] for coord in coordinates) / len(coordinates)
-    center = [avg_x, avg_y]
-else:
-    print("No se encontraron coordenadas para la obra seleccionada.")
-    exit
+projects = []
+feature = selected_features[0]
+projects.append(Project(id=obra_seleccionada, name=feature['properties']['Nombre'], lat=lat, long=long))
 
-osm_url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=true&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA#15/{center[1]}/{center[0]}/45"
-
-
-coord = osm_url.split("/")
-
-lat = center[1]
-long = center[0]
-zoom = "15"
+zoom = "10"
 
 obra = f"'{obra_seleccionada}'"
 
 # Calcular las distancias desde el centro a cada obra
 distances = {}
 for feature in geojson_data["features"]:
-    obra_name = feature["properties"]["Obra"]
+    obra_name = feature["properties"]["Clave"]
     if feature["geometry"]["type"] == "Point":
         f_lon, f_lat = feature["geometry"]["coordinates"]
-        distance = haversine(center[0], center[1], f_lon, f_lat)
+        distance = haversine(lat, long, f_lon, f_lat)
     elif feature["geometry"]["type"] == "LineString":
         min_distance = float('inf')
         for f_lon, f_lat in feature["geometry"]["coordinates"]:
-            distance = haversine(center[0], center[1], f_lon, f_lat)
+            distance = haversine(lat, long, f_lon, f_lat)
             if distance < min_distance:
                 min_distance = distance
     
@@ -131,38 +142,48 @@ for i, (obra_name, distance) in enumerate(closest_obras):
     print(f"{i + 1}. {obra_name}: {distance:.2f} km")
 
 # Permitir al usuario seleccionar una o más obras por índice
-print("Ingrese los números de otras obras relacionadas, separados por comas:")
-selected_indices = input()
+print("Ingrese las claves de otras obras, separados por comas:")
+selected_keys = input()
 otras = ""
-if selected_indices != "":
-    selected_indices = [int(index.strip()) - 1 for index in selected_indices.split(",")]
+if selected_keys != "":
+    selected_keys = selected_keys.split(",")
+    for key in selected_keys:
+        features = [feature for feature in geojson_data["features"] if feature["properties"]["Clave"] == key]
+        lat, long = extract_coordinates(features)
+        feature = features[0]
+        projects.append(Project(id=feature['properties']["Clave"], name=feature['properties']["Nombre"], lat=lat, long=long))
 
-    # Guardar las obras seleccionadas en una variable
-    otras = [f"'{closest_obras[index][0]}'" for index in selected_indices]
+for i, project in enumerate(projects):
+    projects[i].color = COLORS[i % len(COLORS)]
 
-    otras = ",".join(otras)
+print("PROJECTS", projects)
+lines = [project.__dict__ for project in projects]
+lines_str = ", ".join([json.dumps(line) for line in lines])
+# Calcular el centro de todas las coordenadas dentro de projects
+if projects:
+    avg_lat = sum(project.lat for project in projects) / len(projects)
+    avg_long = sum(project.long for project in projects) / len(projects)
+    lat = avg_lat
+    long = avg_long
 
-all = obra
+# const lines = [
+#     { id: 'A27', name: 'RN51 - Salar de Pocitos', color: '#ff0000' },
+#     { id: 'A27-2', name: 'Salar de Pocitos - Los Colorados', color: '#008000' },
+#     { id: 'A27-3', name: 'Los Colorados - Tolar Grande', color: '#B695C0' },
+# ]
 
-if otras == "":
-    otras = "''"
-else:
-    all = f"{obra}, {otras}"
-
-
-with open("mapbox-template.txt") as file:
+with open("viable-mapbox.txt") as file:
     content = file.read()
     content = content.replace("<NOMBRE>", name_js)
     content = content.replace("<LAT>", str(lat))
     content = content.replace("<LONG>", str(long))
     content = content.replace("<ZOOM>", str(zoom))
     content = content.replace("<OBRA>", obra)
-    content = content.replace("<OTRAS OBRAS>", otras)
-    content = content.replace("<TODAS>", all)
+    content = content.replace("<OBRAS>", lines_str)
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     pyperclip.copy(content)
     print("****")
     print("¡SE COPIÓ EL CONTENIDO AL PORTAPAPELES!")
-    with open(f"c:\\temp\\{obra_seleccionada}.js", "w", encoding="utf-8") as new_file:
+    with open(f"c:\\viable\\{obra_seleccionada}.js", "w", encoding="utf-8") as new_file:
         new_file.write(content)
         print(f"¡Se generó el archivo c:\\temp2\\{obra_seleccionada}.js")
