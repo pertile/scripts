@@ -42,7 +42,6 @@ CAR_SIZE = 200
 FOLDER_PATH = r"c:\temp2"
 
 
-print("Este programa toma el último archivo tiff que se haya creado en la carpeta temp2, el último archivo gpx no importa su nombre, y luego busca un video con el mismo nombre que el archivo tiff.")
 
 image_path = glob.glob(os.path.join(FOLDER_PATH, "*.tiff"))
 image_files = glob.glob(os.path.join(FOLDER_PATH, "*.tiff"))
@@ -58,8 +57,14 @@ if not gpx_files:
 gpx_path = max(gpx_files, key=os.path.getmtime)
 print("El archivo GPX es:", gpx_path)
 
-
 mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
+
+print(f"Se iniciará el proceso con los siguientes archivos:\n{image_path}\n{gpx_path}\n{mp4_path}")
+respuesta = input("¿Desea continuar? (s/n): ")
+if respuesta.lower() != 's':
+    print("Proceso cancelado por el usuario.")
+    exit()
+
 png_path = os.path.join(FOLDER_PATH, "coche.png")
 gif_path = os.path.join(FOLDER_PATH, filename + ".gif")
 tfw_path = os.path.join(FOLDER_PATH, filename + ".tfw")
@@ -83,7 +88,7 @@ for track in gpx.tracks:
 
 frames = []
 
-INTERVAL = 5
+INTERVAL = 1
 coordinates = [points[0][:2]]
 previous_time = points[0][2]
 for pos, coord in enumerate(points):
@@ -183,7 +188,7 @@ for pos, coord in enumerate(coordinates):
     temp = car_image.copy()
     previous_angle = angle_degrees
 
-frames[0].save(gif_path, save_all=True, append_images=frames[1:], loop=0, duration=INTERVAL * 1000 / 4)
+frames[0].save(gif_path, save_all=True, append_images=frames[1:], loop=0, duration=INTERVAL * 1000)
 
 # Load the GIF file
 clip = VideoFileClip(gif_path)
