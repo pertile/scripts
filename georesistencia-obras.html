@@ -9,8 +9,8 @@ body {
 
 h2,
 h3 {
+  font-size: 1.5em;
   margin: 10px;
-  font-size: 1.2em;
 }
 
 h3 {
@@ -18,7 +18,7 @@ h3 {
 }
 
 p {
-  font-size: 0.85em;
+  font-size: 1em;
   margin: 10px;
   text-align: left;
 }
@@ -74,7 +74,7 @@ mapboxgl.accessToken = 'pk.eyJ1IjoicGVydGlsZSIsImEiOiJjaWhqa2Fya2gwbmhtdGNsemtua
 var mapGranResistencia = new mapboxgl.Map({
     container: 'mapGranResistencia',
     center: [-58.99331,-27.45057],
-    zoom: 13,
+    zoom: 11.5, // default zoom that will be overridden after load
     bearing: 45,
     style: '/Resistencia.json'
 });
@@ -102,7 +102,7 @@ var layers = ['Obra nueva', 'Obra en ejecución', 'Calles pavimentadas', 'Calles
 var colors = ['#ff0000', '#009900', '#907e7d', '#FFFFFF', '#f3c4aa', '#f3f0b7'];
 
 // Add checkbox controls
-fetch('Obras GeoResistencia.geojson')
+fetch('/Obras GeoResistencia.geojson')
     .then(response => response.json())
     .then(data => {
         const constructionFeatures = data.features.filter(f => f.properties.surface === 'construction');
@@ -136,9 +136,11 @@ fetch('Obras GeoResistencia.geojson')
           
           return acc;
         }, {});
+        console.log(groupedByObra);
         Object.entries(groupedByObra).forEach(([obraName, obraData]) => {
           const center = obraData.bounds.getCenter();
           const el = document.createElement('div');
+          const data = obraData.features[0].properties;
           el.className = 'construction-marker';
             el.innerHTML = '<i class="fas fa-person-digging" style="font-size: 24px;"></i>';
           const marker = new mapboxgl.Marker({
@@ -153,7 +155,7 @@ fetch('Obras GeoResistencia.geojson')
           const popup = new mapboxgl.Popup({
             closeButton: false,
             closeOnClick: false
-          }).setHTML(`<h3>${obraName}</h3>`);
+            }).setHTML(`<h2><a href="${data.link_progress}" target="_blank">${data.type}: ${data.title}</a></h2><h3>${data.municipality}</h3><h3>Longitud: ${data.length}&nbsp;m ${data.estimated ? '(estimado)' : ''}</h3><p>${data.short_description}</p><p>Fecha de inicio: ${(new Date(data.start).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }))}</p>`);
 
           // Show popup on mouse enter
           marker.getElement().addEventListener('mouseenter', () => {
@@ -161,8 +163,12 @@ fetch('Obras GeoResistencia.geojson')
           });
 
           // Hide popup on mouse leave
-          marker.getElement().addEventListener('mouseleave', () => {
-            popup.remove();
+            // Add mouseenter event listener to the popup element when it's added to the map
+          popup.on('open', () => {
+            const popupElement = popup.getElement();
+            popupElement.addEventListener('mouseleave', () => {
+              popup.remove();
+            });
           });
 
           // Add click handler for zoom
