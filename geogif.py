@@ -55,9 +55,19 @@ gpx_files = glob.glob(os.path.join(FOLDER_PATH, "*.gpx"))
 if not gpx_files:
     raise FileNotFoundError("No se encontraron archivos GPX en la carpeta especificada.")
 gpx_path = max(gpx_files, key=os.path.getmtime)
-print("El archivo GPX es:", gpx_path)
 
 mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
+if not os.path.exists(mp4_path):
+    mp4_files = glob.glob(os.path.join(FOLDER_PATH, "*.mp4"))
+    if mp4_files:
+        latest_mp4 = max(mp4_files, key=os.path.getmtime)
+        latest_mp4_name = os.path.basename(latest_mp4)
+        if latest_mp4_name.startswith("VID_"):
+            os.rename(latest_mp4, mp4_path)
+        else:
+            raise FileNotFoundError(f"El último archivo .mp4 debe llamarse {mp4_path} o comenzar con 'VID_'")
+    else:
+        raise FileNotFoundError("No se encontró ningún archivo MP4.")
 
 print(f"Se iniciará el proceso con los siguientes archivos:\n{image_path}\n{gpx_path}\n{mp4_path}")
 respuesta = input("¿Desea continuar? (s/n): ")
