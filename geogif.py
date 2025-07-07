@@ -98,7 +98,7 @@ for track in gpx.tracks:
 
 frames = []
 
-INTERVAL = 1
+INTERVAL = 4
 coordinates = [points[0][:2]]
 previous_time = points[0][2]
 for pos, coord in enumerate(points):
@@ -198,13 +198,14 @@ for pos, coord in enumerate(coordinates):
     temp = car_image.copy()
     previous_angle = angle_degrees
 
-frames[0].save(gif_path, save_all=True, append_images=frames[1:], loop=0, duration=INTERVAL * 1000)
 
-# Load the GIF file
-clip = VideoFileClip(gif_path)
+# Crear el video directamente desde los frames usando MoviePy
 
-# Write the GIF file to an MP4 file
-clip.write_videofile(f"{FOLDER_PATH }\\{filename} esquema.mp4", codec='libx264')
+import numpy as np
+from moviepy.editor import ImageSequenceClip
+output_mp4 = os.path.join(FOLDER_PATH, f"{filename}_esquema.mp4")
+clip = ImageSequenceClip([np.array(frame.convert('RGB')) for frame in frames], fps=1/INTERVAL)
+clip.write_videofile(output_mp4, codec='libx264')
 
 new_mp4_path = os.path.join(FOLDER_PATH, filename + ".mp4")
 os.rename(mp4_path, new_mp4_path)
