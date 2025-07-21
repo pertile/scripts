@@ -37,7 +37,7 @@ def haversine(lon1, lat1, lon2, lat2):
     return distance
 
 # URL del archivo GeoJSON
-GEOJSON_FILE= r"C:\Users\fpertile\OneDrive - FDN\Planos y mapas\Obras GeoResistencia.geojson"
+GEOJSON_FILE= "Obras GeoResistencia.geojson"
 
 # Descargar y cargar el archivo GeoJSON
 with open(GEOJSON_FILE, "r", encoding="utf-8") as file:

@@ -1,0 +1,46 @@
+body {
+  margin: 0;
+  padding: 0;
+}
+
+h2,
+h3 {
+  font-size: 1.5em;
+  margin: 10px;
+}
+
+p {
+  font-size: 1em;
+  margin: 10px;
+  text-align: left;
+}
+.mapboxgl-popup-content a {
+  text-decoration: underline;
+  outline: none;
+}
+
+/* Estilos para el botón de cierre del popup */
+.mapboxgl-popup-close-button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  border: 0;
+  border-radius: 0 3px 0 0;
+  cursor: pointer;
+  background-color: rgba(255,255,255,0.8);
+  color: #333 !important;
+  font-size: 18px;
+  font-weight: bold;
+  width: 30px;
+  height: 30px;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+  text-decoration: none;
+}
+
+.mapboxgl-popup-close-button:hover {
+  background-color: rgba(0,0,0,0.1);
+  color: #000 !important;
+}
