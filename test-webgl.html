@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebGL - Diagnóstico</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { background: #d4edda; border-left: 5px solid #28a745; }
+        .error { background: #f8d7da; border-left: 5px solid #dc3545; }
+        .warning { background: #fff3cd; border-left: 5px solid #ffc107; }
+        .info { background: #d1ecf1; border-left: 5px solid #17a2b8; }
+        canvas { border: 1px solid #ccc; margin: 10px 0; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnóstico WebGL</h1>
+    
+    <div class="test-section info">
+        <h2>Información del Navegador</h2>
+        <div id="browser-info"></div>
+    </div>
+
+    <div class="test-section" id="webgl-test">
+        <h2>Test WebGL Básico</h2>
+        <div id="webgl-result"></div>
+    </div>
+
+    <div class="test-section" id="webgl-details">
+        <h2>Detalles de WebGL</h2>
+        <div id="webgl-details-result"></div>
+    </div>
+
+    <div class="test-section" id="webgl-canvas">
+        <h2>Test Visual WebGL</h2>
+        <div id="canvas-result"></div>
+        <canvas id="test-canvas" width="300" height="150"></canvas>
+    </div>
+
+    <div class="test-section" id="mapbox-test">
+        <h2>Test Mapbox GL JS</h2>
+        <div id="mapbox-result"></div>
+        <button onclick="testMapbox()">Probar Mapbox</button>
+    </div>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script>
+        // Información del navegador
+        document.getElementById('browser-info').innerHTML = `
+            <strong>User Agent:</strong> ${navigator.userAgent}<br>
+            <strong>Platform:</strong> ${navigator.platform}<br>
+            <strong>Vendor:</strong> ${navigator.vendor}<br>
+            <strong>Language:</strong> ${navigator.language}<br>
+            <strong>Hardware Concurrency:</strong> ${navigator.hardwareConcurrency || 'No disponible'}<br>
+            <strong>Max Touch Points:</strong> ${navigator.maxTouchPoints || 'No disponible'}
+        `;
+
+        // Test WebGL básico
+        function testWebGL() {
+            const result = document.getElementById('webgl-result');
+            const section = document.getElementById('webgl-test');
+            
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (gl) {
+                    result.innerHTML = '✅ <strong>WebGL está disponible</strong>';
+                    section.className = 'test-section success';
+                    return gl;
+                } else {
+                    result.innerHTML = '❌ <strong>WebGL no está disponible</strong>';
+                    section.className = 'test-section error';
+                    return null;
+                }
+            } catch (e) {
+                result.innerHTML = `❌ <strong>Error al acceder a WebGL:</strong> ${e.message}`;
+                section.className = 'test-section error';
+                return null;
+            }
+        }
+
+        // Detalles de WebGL
+        function getWebGLDetails() {
+            const result = document.getElementById('webgl-details-result');
+            const section = document.getElementById('webgl-details');
+            
+            const gl = testWebGL();
+            if (!gl) {
+                result.innerHTML = '⚠️ No se pueden obtener detalles sin WebGL';
+                section.className = 'test-section warning';
+                return;
+            }
+
+            try {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+                const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
+                
+                const details = {
+                    version: gl.getParameter(gl.VERSION),
+                    shadingLanguageVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+                    vendor: vendor,
+                    renderer: renderer,
+                    maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+                    maxViewportDims: gl.getParameter(gl.MAX_VIEWPORT_DIMS),
+                    aliasedLineWidthRange: gl.getParameter(gl.ALIASED_LINE_WIDTH_RANGE),
+                    maxCombinedTextureImageUnits: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS)
+                };
+
+                result.innerHTML = `
+                    <pre>${JSON.stringify(details, null, 2)}</pre>
+                `;
+                section.className = 'test-section success';
+            } catch (e) {
+                result.innerHTML = `❌ Error obteniendo detalles: ${e.message}`;
+                section.className = 'test-section error';
+            }
+        }
+
+        // Test visual
+        function testVisualWebGL() {
+            const result = document.getElementById('canvas-result');
+            const section = document.getElementById('webgl-canvas');
+            const canvas = document.getElementById('test-canvas');
+            
+            try {
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (!gl) {
+                    result.innerHTML = '❌ No se pudo obtener contexto WebGL para canvas';
+                    section.className = 'test-section error';
+                    return;
+                }
+
+                // Limpiar con color azul
+                gl.clearColor(0.0, 0.5, 1.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                // Dibujar triángulo simple
+                const vertexShaderSource = `
+                    attribute vec2 a_position;
+                    void main() {
+                        gl_Position = vec4(a_position, 0.0, 1.0);
+                    }
+                `;
+                
+                const fragmentShaderSource = `
+                    precision mediump float;
+                    void main() {
+                        gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+                    }
+                `;
+
+                // Crear shaders
+                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                gl.shaderSource(vertexShader, vertexShaderSource);
+                gl.compileShader(vertexShader);
+
+                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                gl.shaderSource(fragmentShader, fragmentShaderSource);
+                gl.compileShader(fragmentShader);
+
+                // Crear programa
+                const program = gl.createProgram();
+                gl.attachShader(program, vertexShader);
+                gl.attachShader(program, fragmentShader);
+                gl.linkProgram(program);
+                gl.useProgram(program);
+
+                // Crear buffer con triángulo
+                const vertices = new Float32Array([
+                    0.0,  0.5,
+                   -0.5, -0.5,
+                    0.5, -0.5
+                ]);
+
+                const buffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+                const position = gl.getAttribLocation(program, 'a_position');
+                gl.enableVertexAttribArray(position);
+                gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+                // Dibujar
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+                result.innerHTML = '✅ <strong>WebGL funcionando correctamente</strong> - Deberías ver un triángulo amarillo sobre fondo azul';
+                section.className = 'test-section success';
+                
+            } catch (e) {
+                result.innerHTML = `❌ Error en test visual: ${e.message}`;
+                section.className = 'test-section error';
+            }
+        }
+
+        // Test Mapbox
+        function testMapbox() {
+            const result = document.getElementById('mapbox-result');
+            const section = document.getElementById('mapbox-test');
+            
+            try {
+                // Verificar que Mapbox GL está cargado
+                if (typeof mapboxgl === 'undefined') {
+                    result.innerHTML = '❌ Mapbox GL JS no está cargado';
+                    section.className = 'test-section error';
+                    return;
+                }
+
+                result.innerHTML = `
+                    ✅ <strong>Mapbox GL JS cargado correctamente</strong><br>
+                    Versión: ${mapboxgl.version}<br>
+                    Soporte WebGL: ${mapboxgl.supported() ? 'Sí' : 'No'}
+                `;
+                
+                if (mapboxgl.supported()) {
+                    section.className = 'test-section success';
+                } else {
+                    section.className = 'test-section warning';
+                }
+                
+            } catch (e) {
+                result.innerHTML = `❌ Error con Mapbox: ${e.message}`;
+                section.className = 'test-section error';
+            }
+        }
+
+        // Ejecutar tests al cargar
+        window.onload = function() {
+            testWebGL();
+            getWebGLDetails();
+            testVisualWebGL();
+            testMapbox();
+        };
+    </script>
+</body>
+</html>

@@ -1,17 +1,20 @@
 import geopandas as gpd
 from ftplib import FTP
 import os
+import shutil
 
 # Rutas de archivo
-input_path = r"C:\Users\fpertile\OneDrive - FDN\Planos y mapas\highway Resistencia new.gpkg"
+input_path = r"C:\Users\fpertile\OneDrive - FDN\Planos y mapas\Obras GeoResistencia multiline.geojson"
 output_path = "Obras GeoResistencia.geojson"
 
 # 1. Leer el archivo geopackage y filtrar elementos
-gdf = gpd.read_file(input_path)
-gdf_filtered = gdf[gdf['Obra'].notna()]  # Filtrar filas donde 'obra' no esté vacío
+# gdf = gpd.read_file(input_path)
+# gdf_filtered = gdf[gdf['Obra'].notna()]  # Filtrar filas donde 'obra' no esté vacío
 
 # 2. Convertir el resultado a GeoJSON y guardarlo en un archivo
-gdf_filtered.to_file(output_path, driver="GeoJSON")
+# gdf_filtered.to_file(output_path, driver="GeoJSON")
+
+shutil.copyfile(input_path, output_path)
 
 # 3. Subir el archivo mediante FTP
 ftp_host = os.getenv("FTP_GEORESIS_HOST")
