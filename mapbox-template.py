@@ -73,12 +73,14 @@ selected_features = [feature for feature in geojson_data["features"] if feature[
 
 # Extraer las coordenadas de las features seleccionadas
 coordinates = []
+
 for feature in selected_features:
+    print(feature['geometry']['type'])
     if feature["geometry"]["type"] == "Point":
         coordinates.append(feature["geometry"]["coordinates"])
     elif feature["geometry"]["type"] in ["LineString", "Polygon"]:
         coordinates.extend(feature["geometry"]["coordinates"])
-    elif feature["geometry"]["type"] == "MultiPolygon":
+    elif feature["geometry"]["type"] in ["MultiPolygon", "MultiLineString"]:
         for polygon in feature["geometry"]["coordinates"]:
             coordinates.extend(polygon)
 
@@ -91,7 +93,7 @@ if coordinates:
 else:
     print("No se encontraron coordenadas para la obra seleccionada.")
     exit
-
+print("center es", center)
 osm_url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=true&access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA#15/{center[1]}/{center[0]}/45"
 
 
@@ -107,18 +109,22 @@ obra = f"'{obra_seleccionada}'"
 distances = {}
 for feature in geojson_data["features"]:
     obra_name = feature["properties"]["Obra"]
-    if feature["geometry"]["type"] == "Point":
-        f_lon, f_lat = feature["geometry"]["coordinates"]
+    geom_type = feature["geometry"]["type"]
+    coords = feature["geometry"]["coordinates"]
+    distance = None
+    if geom_type == "Point":
+        f_lon, f_lat = coords
         distance = haversine(center[0], center[1], f_lon, f_lat)
-    elif feature["geometry"]["type"] == "LineString":
-        min_distance = float('inf')
-        for f_lon, f_lat in feature["geometry"]["coordinates"]:
-            distance = haversine(center[0], center[1], f_lon, f_lat)
-            if distance < min_distance:
-                min_distance = distance
-    
-    # Solo almacenar la distancia mínima para cada obra
-    if obra_name not in distances or distance < distances[obra_name] and obra_name != obra_seleccionada:
+    elif geom_type == "LineString":
+        distance = min(haversine(center[0], center[1], f_lon, f_lat) for f_lon, f_lat in coords)
+    elif geom_type == "MultiLineString":
+        # MultiLineString: lista de listas de coordenadas
+        distance = min(
+            haversine(center[0], center[1], f_lon, f_lat)
+            for line in coords for f_lon, f_lat in line
+        )
+    # Solo almacenar la distancia si no es la obra seleccionada
+    if obra_name != obra_seleccionada:
         distances[obra_name] = distance
 
 # Convertir el diccionario a una lista de tuplas y ordenar por distancia
